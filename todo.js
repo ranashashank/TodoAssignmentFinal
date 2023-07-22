@@ -17,7 +17,9 @@ function todoMain() {
     searchbtn,
     viewBacklogsbtn,
     hideBackblogs,
-    divtoShow;
+    divtoShow,
+    todoTable,
+    draggingElement;
 
   getElements();
   addListeners();
@@ -40,6 +42,7 @@ function todoMain() {
     viewBacklogsbtn = document.getElementById("viewBacklogsbtn");
     hideBackblogs = document.getElementById("hideBackblogs");
     divtoShow = document.getElementById("divtoShow");
+    todoTable = document.getElementById("todoTable");
   }
 
   function addListeners() {
@@ -55,6 +58,9 @@ function todoMain() {
     document
       .getElementById("todoTable")
       .addEventListener("click", onTableClicked, false);
+    todoTable.addEventListener("dragstart", onDragstart, false);
+    todoTable.addEventListener("drop", onDrop, false);
+    todoTable.addEventListener("dragover", onDragOver, false);
   }
 
   function addTask(event) {
@@ -157,7 +163,8 @@ function todoMain() {
 
     let trElem = document.createElement("tr");
     table.appendChild(trElem);
-
+    trElem.draggable = "true";
+    trElem.dataset.id == id;
     //checkbox cell,
     let checkboxElem = document.createElement("input");
     checkboxElem.type = "checkbox";
@@ -479,5 +486,42 @@ function todoMain() {
       return !todo.done && dueDate <= today;
     });
     return backlogs;
+  }
+  function onDragstart(event) {
+    draggingElement = event.target; //trElem
+  }
+  function onDrop(event) {
+    //prevent when target is table
+    if (event.target.matches("table")) return;
+    let beforeTarget = event.target;
+    // *handling visual drag and drop of the table*/
+
+    //to look through until it is tr
+    while (!beforeTarget.matches("tr")) beforeTarget = beforeTarget.parentNode;
+
+    //prevent when tr is first row
+    if (beforeTarget.matches(":first-child")) return;
+
+    //handling array
+
+    let tempIndex;
+    //find the index of one to be taken out
+    todoList.forEach((todo, index) => {
+      if (todo.id == draggingElement.dataset.id) tempIndex = index;
+    });
+    //pop the element
+    let [toInsertObj] = todoList.splice(tempIndex, 1);
+
+    //find the of one  to be inserted before
+    todoList.forEach((todo, index) => {
+      if (todo.id == beforeTarget.dataset.id) tempIndex = index;
+    });
+    //insert the temp
+    todoList.splice(tempIndex, 0, toInsertObj);
+    todoTable.insertBefore(draggingElement, beforeTarget);
+    save();
+  }
+  function onDragOver(event) {
+    event.preventDefault();
   }
 }
