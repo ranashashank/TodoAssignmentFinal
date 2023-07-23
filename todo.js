@@ -355,7 +355,7 @@ function todoMain() {
       }
     } else {
       let filteredCategoryArray = todoList.filter(
-        (obj) => obj.category === selection
+        (obj) => obj.category == selection
       );
       if (shortlistBtn.checked) {
         let filteredIncompArray = filteredCategoryArray.filter(
