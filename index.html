@@ -44,6 +44,12 @@
           <option data-opvalue="2" value="Low">Low</option>
           <option data-opvalue="3" value="Medium">Medium</option>
         </select>
+        <label for="subtasks">Add Subtasks</label>
+        <input type="text" id="subtasks" />
+
+        <label for="reminderInput">Reminder Date and Time:</label>
+        <input type="datetime-local" id="reminderInput" />
+
         <span></span>
         <button id="add-btn">Add</button>
         <span></span>
@@ -57,6 +63,7 @@
         >
         <button id="backlogsbtn">Show Backlogs</button>
         <span></span>
+
         <span>!!!To edit To-do click on the element</span>
       </div>
       <div>
@@ -70,12 +77,16 @@
               <select id="categoryFilter"></select>
             </td>
             <td>delete</td>
+            <td>Reminder</td>
+            <td>Subtasks</td>
+            <td></td>
           </tr>
         </table>
 
         <ul id="activityLog"></ul>
       </div>
     </div>
+
     <script src="todo.js"></script>
   </body>
 </html>
