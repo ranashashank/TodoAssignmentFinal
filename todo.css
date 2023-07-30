@@ -70,3 +70,6 @@ body {
 li {
   list-style-type: none;
 }
+.reminder-triggered {
+  background: red;
+}
