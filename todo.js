@@ -4,6 +4,7 @@ function todoMain() {
   const DEFAULT_OPTION = "choose category";
   let todoList = [];
   let activityLogs = [];
+  let subtask = [];
   let inputEle,
     addButton,
     inputEle2,
@@ -20,7 +21,8 @@ function todoMain() {
     draggingElement,
     showActivityLogBtn,
     activityLog,
-    backlogsbtn;
+    backlogsbtn,
+    subtasksInput;
 
   getElements();
   addListeners();
@@ -45,6 +47,7 @@ function todoMain() {
     showActivityLogBtn = document.getElementById("showActivityLogBtn");
     todoTable = document.getElementById("todoTable");
     backlogsbtn = document.getElementById("backlogsbtn");
+    subtasksInput = document.getElementById("subtasks");
   }
 
   function addListeners() {
@@ -76,49 +79,186 @@ function todoMain() {
     todoTable.addEventListener("dragstart", onDragstart, false);
     todoTable.addEventListener("drop", onDrop, false);
     todoTable.addEventListener("dragover", onDragOver, false);
+    const addSubtaskBtn = document.getElementById("addSubtaskBtn");
   }
   function clearActivityLog() {
     activityLog.innerHTML = ""; // Assuming "activityLog" is the container for the logs
   }
   function addTask(event) {
-    if (
-      inputEle.value == "" ||
-      inputEle2.value == "" ||
-      prior.value == "" ||
-      dateInput.value == ""
-    ) {
-      alert("please enter every field");
-      return;
-    }
     console.log(inputEle2.value);
     let inputValue = inputEle.value;
     //log added
-
+    let task = extractTodoFromTodoInput(inputValue);
     logActivity(`Task "${inputValue}" added`);
 
+    let subtasks = subtasksInput.value.split(",");
+    console.log(subtasks);
+    subtasksInput.value = "";
     inputEle.value = "";
 
     let inputValue2 = inputEle2.value;
     inputEle2.value = "";
 
     let selectedOption = prior.value;
-    let dateValue = dateInput.value;
-    dateInput.value = "";
+
+    let reminderValue = document.getElementById("reminderInput").value;
+    document.getElementById("reminderInput").value;
     console.log(prior);
+
+    // Check for duplicate todo before adding
+    if (todoList.length > 0) {
+      const isDuplicate = todoList.some(
+        (todoObj) => todoObj.todo.toLowerCase() === task.toLowerCase()
+      );
+      if (isDuplicate) {
+        alert("Todo with the same name and category already exists.");
+        return;
+      }
+    }
+
+    // Extract the due date from the input value
+    let dateValue = extractDateFromTodoInput(inputValue);
+    console.log(dateValue);
+    // If no valid date found in the input, use the date input field value
+    if (!dateValue) {
+      dateValue = dateInput.value;
+    }
+    dateInput.value = "";
     let obj = {
       id: _uuid(),
-      todo: inputValue,
+      todo: task,
       category: inputValue2,
       date: dateValue,
       priority: selectedOption,
       done: false,
+      reminder: reminderValue,
+      subtask: subtasks,
     };
+    if (inputValue == "") {
+      alert("please enter  Todo");
+      return;
+    }
+    if (inputValue2 == "") {
+      alert("please enter category");
+      return;
+    }
+    if (dateValue == "") {
+      alert("please enter  date");
+      return;
+    }
+    if (selectedOption == "") {
+      alert("please enter priority");
+      return;
+    }
+    // if (
+    //   inputValue == "" ||
+    //   inputValue2 == "" ||
+    //   selectedOption == "" ||
+    //   dateValue == ""
+    // ) {
+    //   alert("please enter every field");
+    //   return;
+    // }
+    console.log(obj);
     renderRow(obj);
-
+    checkReminders();
     todoList.push(obj);
 
     save();
     updateSelectOptions();
+  }
+  function extractTodoFromTodoInput(inputValue) {
+    // Extract the todo text from the input value by removing the date information
+    return inputValue
+      .replace(
+        /by\s+(tomorrow|today|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{4}(?:\s+\d{1,2}:\d{2}(?:\s+[ap]m)?)?)/i,
+        ""
+      )
+      .trim();
+  }
+
+  function extractDateFromTodoInput(inputValue) {
+    // Extract the due date information from the input value
+    const dateRegex =
+      /by\s+(tomorrow|today|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{4}(?:\s+\d{1,2}:\d{2}(?:\s+[ap]m)?)?)/i;
+    const match = inputValue.match(dateRegex);
+
+    if (match) {
+      const dateInput = match[1].toLowerCase();
+      if (dateInput === "tomorrow") {
+        const currentDate = new Date();
+        currentDate.setDate(currentDate.getDate() + 1);
+        return currentDate.toISOString().slice(0, 10);
+      } else if (dateInput === "today") {
+        const currentDate = new Date();
+        return currentDate.toISOString().slice(0, 10);
+      } else {
+        const dateAndTimeRegex =
+          /(\d{1,2})(?:st|nd|rd|th)?\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{4})\s+(\d{1,2}:\d{2}(?:\s+[ap]m)?)/;
+        const dateMatch = dateInput.match(dateAndTimeRegex);
+
+        if (dateMatch) {
+          const [, day, month, time] = dateMatch;
+          const year = extractYear(inputValue);
+          const dateValue = `${year}-${monthToNumber(month)}-${day.padStart(
+            2,
+            "0"
+          )}`;
+          const dueDate = new Date(dateValue + " " + time);
+          return dueDate.toISOString().slice(0, 10);
+        } else {
+          const dateWithoutBy = dateInput.replace(/by\s+/, "");
+          const dateOnlyRegex =
+            /(\d{1,2})(?:st|nd|rd|th)?\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)/i;
+          const dateOnlyMatch = dateWithoutBy.match(dateOnlyRegex);
+
+          if (dateOnlyMatch) {
+            const [, day, month] = dateOnlyMatch;
+            const year = extractYear(inputValue);
+            const dateValue = `${year}-${monthToNumber(month)}-${day.padStart(
+              2,
+              "0"
+            )}`;
+            const dueDate = new Date(dateValue);
+            console.log(dueDate);
+            if (dueDate != "Invalid Date")
+              return dueDate.toISOString().slice(0, 10);
+          }
+        }
+      }
+    }
+    // If no date information found, return an empty string
+    return "";
+  }
+
+  function extractYear(inputValue) {
+    // Extract the year from the input value
+    const yearRegex = /\d{4}/;
+    const yearMatch = inputValue.match(yearRegex);
+    if (yearMatch) {
+      return yearMatch[0];
+    }
+    // If no year found, return the current year
+    const currentDate = new Date();
+    return currentDate.getFullYear().toString();
+  }
+
+  function monthToNumber(month) {
+    const months = {
+      january: "01",
+      february: "02",
+      march: "03",
+      april: "04",
+      may: "05",
+      june: "06",
+      july: "07",
+      august: "08",
+      september: "09",
+      october: "10",
+      november: "11",
+      december: "12",
+    };
+    return months[month.toLowerCase()];
   }
 
   function updateSelectOptions() {
@@ -154,6 +294,7 @@ function todoMain() {
     if (todoList === null) {
       todoList = [];
     }
+    checkReminders();
   }
   function viewOriginaltable() {
     clearTable();
@@ -171,6 +312,8 @@ function todoMain() {
     date,
     priority: selectedOption,
     done,
+    reminder,
+    subtask: subtasks,
   }) {
     //add a new Row
     console.log(todoList);
@@ -231,28 +374,153 @@ function todoMain() {
     tdElem4.appendChild(spanElem);
     trElem.appendChild(tdElem4);
 
+    // Reminder cell
+    let tdElem5 = document.createElement("td");
+    tdElem5.innerText = reminder;
+    trElem.appendChild(tdElem5);
+
     checkboxElem.checked = done;
     if (done) {
       trElem.classList.add("strike");
     } else {
       trElem.classList.remove("strike");
     }
+    // // Subtasks cell
+    let subtasksTd = document.createElement("td");
+    let subtasksList = document.createElement("ul");
+
+    console.log(subtasks);
+    subtasks.forEach((subtask, ind) => {
+      let subtaskItem = document.createElement("li");
+
+      // Create a container to hold the subtask text and buttons
+      let subtaskContainer = document.createElement("div");
+
+      // Subtask text
+      let subtaskText = document.createElement("span");
+      subtaskText.innerText = subtask;
+      subtaskContainer.appendChild(subtaskText);
+
+      // Add checkbox
+      let checkboxsub = document.createElement("input");
+      checkboxsub.type = "checkbox";
+      checkboxsub.addEventListener(
+        "click",
+        checkboxClicksubtaskCallback,
+        false
+      );
+      subtaskContainer.appendChild(checkboxsub);
+
+      // Add an edit button for each subtask
+      let editSubtaskButton = document.createElement("button");
+      editSubtaskButton.innerText = "Edit";
+      editSubtaskButton.addEventListener("click", () => {
+        editSubtask(subtaskItem, ind, id);
+      });
+      subtaskContainer.appendChild(editSubtaskButton);
+
+      function checkboxClicksubtaskCallback() {
+        subtaskItem.classList.toggle("strike");
+        save();
+      }
+
+      subtaskItem.appendChild(subtaskContainer);
+      subtasksList.appendChild(subtaskItem);
+    });
+    subtasksTd.appendChild(subtasksList);
+    trElem.appendChild(subtasksTd);
+
+    // update the subtask
+    let subtasksTdButton = document.createElement("td");
+    let subtaskButton = document.createElement("button");
+    subtaskButton.innerText = "Update Subtask";
+    subtaskButton.addEventListener("click", updateSubtask);
+    subtasksTdButton.appendChild(subtaskButton);
+    trElem.appendChild(subtasksTdButton);
+
+    function updateSubtask() {
+      // Prompt the user for input
+      const userInput = window.prompt(
+        "Enter subtasks separated by commas:",
+        subtasks.join(", ")
+      );
+
+      if (userInput !== null) {
+        // Split the input into an array of subtasks
+        const newSubtasks = userInput
+          .split(",")
+          .map((subtask) => subtask.trim());
+
+        // Remove any empty subtasks
+        const filteredSubtasks = newSubtasks.filter(
+          (subtask) => subtask !== ""
+        );
+
+        // Update the subtask array
+        subtasks = filteredSubtasks;
+
+        // Clear existing subtasks in the list
+        subtasksList.innerHTML = "";
+
+        // Create new subtask elements based on the updated subtasks array
+        filteredSubtasks.forEach((subtask, ind) => {
+          let subtaskItem = document.createElement("li");
+
+          // Create a container to hold the subtask text and buttons
+          let subtaskContainer = document.createElement("div");
+
+          // Subtask text
+          let subtaskText = document.createElement("span");
+          subtaskText.innerText = subtask;
+          subtaskContainer.appendChild(subtaskText);
+
+          // Add checkbox
+          let checkboxsub = document.createElement("input");
+          checkboxsub.type = "checkbox";
+          checkboxsub.addEventListener(
+            "click",
+            checkboxClicksubtaskCallback,
+            false
+          );
+          subtaskContainer.appendChild(checkboxsub);
+
+          // Add an edit button for each subtask
+          let editSubtaskButton = document.createElement("button");
+          editSubtaskButton.innerText = "Edit";
+          editSubtaskButton.addEventListener("click", () => {
+            editSubtask(subtaskItem, ind, id);
+          });
+          subtaskContainer.appendChild(editSubtaskButton);
+
+          function checkboxClicksubtaskCallback() {
+            subtaskItem.classList.toggle("strike");
+            save();
+          }
+
+          subtaskItem.appendChild(subtaskContainer);
+          subtasksList.appendChild(subtaskItem);
+        });
+      }
+    }
     // For edit on cell feature
     dateElem.dataset.editable = true;
     tdElem2.dataset.editable = true;
     tdElem3.dataset.editable = true;
     tdprior.dataset.editable = true;
+    tdElem5.dataset.editable = true;
 
     dateElem.dataset.type = "date";
     dateElem.dataset.value = date;
     tdElem2.dataset.type = "todo";
     tdElem3.dataset.type = "category";
     tdprior.dataset.type = "priority";
+    tdElem5.dataset.type = "remindertype";
 
     dateElem.dataset.id = id;
     tdElem2.dataset.id = id;
     tdElem3.dataset.id = id;
     tdprior.dataset.id = id;
+    tdElem5.dataset.id = id;
 
     function deleteItem() {
       console.log(tdElem2);
@@ -283,6 +551,21 @@ function todoMain() {
       }
       console.log(tdElem2.innerText);
       console.log(this.checked);
+      save();
+    }
+  }
+  function editSubtask(subtaskItem, subtaskIndex, mainTaskId) {
+    const spanElement = subtaskItem.children[0].querySelector("span");
+    const editedSubtask = prompt("Edit Subtask:", spanElement.innerText);
+    if (editedSubtask !== null && editedSubtask.trim() !== "") {
+      const mainTaskObj = todoList.find((todoObj) => todoObj.id === mainTaskId);
+
+      // Update the subtask in the main task object's subtasks array
+      mainTaskObj.subtask[subtaskIndex] = editedSubtask;
+      clearTable();
+      renderRows(todoList);
+
+      // Save the changes to local storage and update the table
       save();
     }
   }
@@ -369,6 +652,7 @@ function todoMain() {
       }
     }
   }
+
   function onTableClicked(event) {
     if (event.target.matches("td") && event.target.dataset.editable == "true") {
       let tempInputElem;
@@ -402,7 +686,13 @@ function todoMain() {
           event.target.appendChild(tempInputElem);
 
           break;
+        case "remindertype":
+          tempInputElem = document.createElement("input");
+          tempInputElem.type = "datetime-local";
+          tempInputElem.value = event.target.dataset.value;
 
+          event.target.appendChild(tempInputElem);
+          break;
         default:
           break;
       }
@@ -447,7 +737,14 @@ function todoMain() {
               }
             });
             break;
-
+          case "remindertype":
+            todoList.forEach((todoObj) => {
+              console.log(changedValue);
+              if (todoObj.id === event.target.parentNode.dataset.id) {
+                todoObj.reminder = changedValue;
+              }
+            });
+            break;
           default:
             break;
         }
@@ -470,6 +767,7 @@ function todoMain() {
     console.log(searchTerm);
     if (searchTerm === "") {
       alert("Please enter something to search");
+      viewOriginaltable();
       return;
     }
     let searchResults = [];
@@ -576,5 +874,17 @@ function todoMain() {
   }
   function onDragOver(event) {
     event.preventDefault();
+  }
+  function checkReminders() {
+    const currentTime = new Date().getTime();
+    const reminderTasks = todoList.filter((task) => {
+      const reminderTime = new Date(task.reminder).getTime();
+      return !task.done && reminderTime <= currentTime;
+    });
+
+    reminderTasks.forEach((task) => {
+      alert(`Reminder: "${task.todo}" to be done before "${task.reminder}"`);
+      // Add any other logic you want to handle the reminder, such as playing a sound or showing a notification.
+    });
   }
 }

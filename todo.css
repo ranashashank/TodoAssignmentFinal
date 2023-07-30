@@ -67,3 +67,6 @@ body {
 .backlogs-hidden {
   text-align: center;
 }
+li {
+  list-style-type: none;
+}
